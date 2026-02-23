@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Фаготерапия — Навигатор</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0c;
+  --surface: #121418;
+  --surface2: #1a1d24;
+  --surface3: #22262e;
+  --border: #2a2e38;
+  --accent: #4ecdc4;
+  --accent2: #44b8b0;
+  --accent-dim: rgba(78,205,196,0.12);
+  --accent-glow: rgba(78,205,196,0.25);
+  --warn: #f5a623;
+  --warn-dim: rgba(245,166,35,0.12);
+  --phage: #a78bfa;
+  --phage-dim: rgba(167,139,250,0.12);
+  --meal: #4ecdc4;
+  --supp: #f5a623;
+  --smoke: #ef4444;
+  --smoke-dim: rgba(239,68,68,0.1);
+  --done: #34d399;
+  --done-dim: rgba(52,211,153,0.12);
+  --text: #e8eaf0;
+  --text2: #8b90a0;
+  --text3: #555a6a;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+/* ===== VIEWS ===== */
+.view { display:none; }
+.view.active { display:block; }
+
+/* ===== HEADER ===== */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(10,10,12,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.header-left { display:flex; align-items:center; gap:14px; }
+
+.logo {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent), var(--phage));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.header-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.header-subtitle {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.header-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text3);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.nav-btn:hover { color:var(--text2); background:var(--surface2); }
+.nav-btn.active { color:var(--accent); border-color:var(--accent); background:var(--accent-dim); }
+
+/* ===== DASHBOARD ===== */
+#dashboard { padding: 24px; max-width: 900px; margin: 0 auto; }
+
+.dash-top {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.dash-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.dash-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.dash-card.phase::after { background: linear-gradient(90deg, var(--accent), var(--phage)); }
+.dash-card.progress::after { background: linear-gradient(90deg, var(--done), var(--accent)); }
+
+.dash-label {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.dash-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.dash-detail {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 6px;
+}
+
+.progress-bar-wrap {
+  background: var(--surface2);
+  border-radius: 4px;
+  height: 6px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--phage));
+  transition: width 0.5s ease;
+}
+
+/* ===== TODAY SECTION ===== */
+.section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title .badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.badge-phage { background: var(--phage-dim); color: var(--phage); }
+.badge-prep { background: var(--accent-dim); color: var(--accent); }
+
+.timeline {
+  position: relative;
+  padding-left: 28px;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--border);
+}
+
+.tl-item {
+  position: relative;
+  margin-bottom: 6px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tl-item:hover { border-color: var(--text3); }
+
+.tl-item.checked {
+  opacity: 0.5;
+  border-color: var(--done);
+  background: var(--done-dim);
+}
+
+.tl-item.checked .tl-check { background: var(--done); border-color: var(--done); color: #000; }
+
+.tl-dot {
+  position: absolute;
+  left: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  z-index: 2;
+}
+
+.tl-item.checked .tl-dot { border-color: var(--done); background: var(--done); }
+
+.tl-dot.dot-phage { border-color: var(--text3); }
+.tl-dot.dot-meal { border-color: var(--text3); }
+.tl-dot.dot-supp { border-color: var(--text3); }
+.tl-dot.dot-smoke { border-color: var(--text3); }
+.tl-dot.dot-sleep { border-color: var(--text3); }
+.tl-dot.dot-sport { border-color: var(--text3); }
+
+.tl-check {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 12px;
+  transition: all 0.15s;
+  color: transparent;
+}
+
+.tl-time {
+  font-size: 12px;
+  color: var(--text3);
+  width: 48px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.tl-content { flex: 1; min-width: 0; }
+
+.tl-title {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.tl-desc {
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.tl-tag {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+}
+
+.tl-penalty {
+  font-size: 9px;
+  color: var(--text3);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+/* ===== CALENDAR VIEW ===== */
+#calendar { padding: 24px; max-width: 900px; margin: 0 auto; }
+
+.cal-phases {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.cal-phase {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.cal-phase-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cal-phase-title .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-active { background: var(--phage); box-shadow: 0 0 8px var(--phage); }
+.dot-prep { background: var(--accent); }
+.dot-break { background: var(--warn); }
+.dot-future { background: var(--text3); }
+.dot-done-phase { background: var(--done); }
+
+.cal-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cal-day {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  position: relative;
+}
+
+.cal-day.future { background: var(--surface2); color: var(--text3); }
+.cal-day.today { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+.cal-day.done { background: var(--done-dim); color: var(--done); }
+.cal-day.partial { background: rgba(245,166,35,0.15); color: var(--warn); }
+.cal-day.missed { background: rgba(239,68,68,0.1); color: #ef4444; }
+.cal-day:hover { border-color: var(--text3); }
+
+/* ===== INFO VIEW ===== */
+#info { padding: 24px; max-width: 900px; margin: 0 auto; }
+
+.info-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.info-card h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.info-table td {
+  padding: 8px 10px;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.info-table td:first-child {
+  color: var(--text2);
+  width: 35%;
+  white-space: nowrap;
+}
+
+.info-table td:last-child { color: var(--text); }
+
+.info-table tr:last-child td { border-bottom: none; }
+
+.nutrient-status {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.status-ok { background: var(--done-dim); color: var(--done); }
+.status-warn { background: var(--warn-dim); color: var(--warn); }
+
+/* ===== SETTINGS ===== */
+#settings { padding: 24px; max-width: 900px; margin: 0 auto; }
+
+.setting-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.setting-group h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.setting-row:last-child { border-bottom: none; }
+
+.setting-label { font-size: 12px; color: var(--text2); }
+
+.setting-input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  width: 140px;
+  text-align: center;
+  outline: none;
+}
+
+.setting-input:focus { border-color: var(--accent); }
+
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary:hover { background: var(--accent2); }
+
+.btn-danger {
+  background: none;
+  color: var(--smoke);
+  border: 1px solid var(--smoke);
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-danger:hover { background: var(--smoke-dim); }
+
+.today-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.stat-mini {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  text-align: center;
+}
+
+.stat-mini-val {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stat-mini-label {
+  font-size: 9px;
+  color: var(--text3);
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+  .app-header { padding: 12px 16px; flex-wrap: wrap; }
+  .header-nav { width: 100%; overflow-x: auto; padding-top: 8px; }
+  .nav-btn { padding: 6px 10px; font-size: 10px; }
+  #dashboard, #calendar, #info, #settings { padding: 16px; }
+  .dash-top { grid-template-columns: 1fr; }
+  .today-stats { grid-template-columns: repeat(2, 1fr); }
+  .dash-value { font-size: 22px; }
+  .tl-item { padding: 10px 12px; gap: 8px; }
+  .tl-time { width: 40px; font-size: 11px; }
+  .tl-title { font-size: 11px; }
+  .cal-day { width: 28px; height: 28px; font-size: 9px; }
+  .day-nav { padding: 12px 0; }
+  .day-nav-date { font-size: 14px; }
+}
+
+/* ===== DAY NAVIGATOR ===== */
+.day-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 0;
+  margin-bottom: 16px;
+  user-select: none;
+}
+
+.day-nav-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.day-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+.day-nav-btn:active { transform: scale(0.93); }
+.day-nav-btn.disabled { opacity: 0.25; pointer-events: none; }
+
+.day-nav-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 180px;
+}
+
+.day-nav-date {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.day-nav-sub {
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+.day-nav-today {
+  background: none;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 10px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: all 0.15s;
+  font-weight: 500;
+}
+.day-nav-today:hover { background: var(--accent-dim); }
+.day-nav-today.hidden { display: none; }
+
+.viewing-other-day {
+  background: var(--surface);
+  border: 1px solid var(--warn);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: var(--warn);
+  text-align: center;
+}
+
+.day-completed-banner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: var(--done);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-complete-day {
+  background: var(--surface);
+  color: var(--text2);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-complete-day:hover { border-color: var(--text2); color: var(--text); }
+
+.btn-uncomplete-day {
+  background: none;
+  color: var(--text3);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 8px;
+}
+.btn-uncomplete-day:hover { border-color: var(--text2); color: var(--text2); }
+
+/* ===== STREAK TRACKER ===== */
+.streak-tracker {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.streak-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  transition: all 0.15s;
+}
+
+.streak-dot.s-done { background: var(--done); }
+.streak-dot.s-partial { background: var(--warn); }
+.streak-dot.s-missed { background: #444; }
+.streak-dot.s-empty { background: var(--surface2); border: 1px solid var(--border); width: 6px; height: 6px; }
+
+/* ===== BACKUP BUTTONS ===== */
+.backup-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-backup {
+  background: var(--surface2);
+  color: var(--text2);
+  border: 1px solid var(--border);
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+  text-align: center;
+}
+.btn-backup:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-left">
+    <div class="logo">🧬</div>
+    <div>
+      <div class="header-title">Фаготерапия</div>
+      <div class="header-subtitle">Навигатор лечения</div>
+    </div>
+  </div>
+  <nav class="header-nav">
+    <button class="nav-btn active" data-view="dashboard" onclick="viewingDate=today();showView('dashboard')">День</button>
+    <button class="nav-btn" data-view="calendar" onclick="showView('calendar')">Календарь</button>
+    <button class="nav-btn" data-view="info" onclick="showView('info')">Справка</button>
+    <button class="nav-btn" data-view="settings" onclick="showView('settings')">⚙</button>
+  </nav>
+</header>
+
+<div id="dashboard" class="view active"></div>
+<div id="calendar" class="view"></div>
+<div id="info" class="view"></div>
+<div id="settings" class="view"></div>
+
+<script>
+// ============================================================
+// TELEGRAM INIT
+// ============================================================
+const tg = window.Telegram && window.Telegram.WebApp;
+const isTelegram = !!(tg && tg.initData);
+
+if (isTelegram) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#0a0a0c');
+  tg.setBackgroundColor('#0a0a0c');
+}
+
+// ============================================================
+// STATE + CLOUD STORAGE
+// ============================================================
+const STORAGE_KEY = 'phage-tracker-v2';
+const CLOUD_KEY = 'pt_state';
+const CHUNK_SIZE = 3800; // Telegram limit is 4096, leave margin
+
+const DEFAULT_STATE = {
+  startDate: null,
+  checks: {},
+  completedDays: {},
+  phase: 'setup',
+};
+
+let state = { ...DEFAULT_STATE };
+let viewingDate = null; // set after init
+let stateReady = false;
+
+// --- localStorage (sync, fallback) ---
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return { ...DEFAULT_STATE, ...JSON.parse(raw) };
+  } catch(e) {}
+  return null;
+}
+
+function saveLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+// --- Telegram CloudStorage (async, primary in TG) ---
+function saveCloud() {
+  if (!isTelegram || !tg.CloudStorage) return;
+  const json = JSON.stringify(state);
+  const chunks = [];
+  for (let i = 0; i < json.length; i += CHUNK_SIZE) {
+    chunks.push(json.slice(i, i + CHUNK_SIZE));
+  }
+  // Save chunk count
+  tg.CloudStorage.setItem(CLOUD_KEY + '_n', String(chunks.length), () => {});
+  chunks.forEach((chunk, idx) => {
+    tg.CloudStorage.setItem(CLOUD_KEY + '_' + idx, chunk, () => {});
+  });
+}
+
+function loadCloud(callback) {
+  if (!isTelegram || !tg.CloudStorage) { callback(null); return; }
+  tg.CloudStorage.getItem(CLOUD_KEY + '_n', (err, val) => {
+    if (err || !val) { callback(null); return; }
+    const n = parseInt(val);
+    if (!n || n < 1) { callback(null); return; }
+    const keys = [];
+    for (let i = 0; i < n; i++) keys.push(CLOUD_KEY + '_' + i);
+    tg.CloudStorage.getItems(keys, (err2, result) => {
+      if (err2 || !result) { callback(null); return; }
+      let json = '';
+      for (let i = 0; i < n; i++) {
+        json += result[CLOUD_KEY + '_' + i] || '';
+      }
+      try {
+        const parsed = JSON.parse(json);
+        callback({ ...DEFAULT_STATE, ...parsed });
+      } catch(e) { callback(null); }
+    });
+  });
+}
+
+function saveState() {
+  saveLocal();
+  saveCloud();
+}
+
+// --- Init: load from best source then render ---
+function initApp() {
+  const localData = loadLocal();
+
+  if (isTelegram) {
+    loadCloud((cloudData) => {
+      if (cloudData && cloudData.startDate) {
+        // Cloud has data — use it, also update local
+        state = cloudData;
+        saveLocal();
+      } else if (localData && localData.startDate) {
+        // Only local has data — use it, push to cloud
+        state = localData;
+        saveCloud();
+      }
+      finishInit();
+    });
+  } else {
+    if (localData) state = localData;
+    finishInit();
+  }
+}
+
+function finishInit() {
+  viewingDate = today();
+  stateReady = true;
+  renderAll();
+}
+
+// ============================================================
+// TREATMENT PLAN
+// ============================================================
+const PHASES = [
+  { id: 'course1', label: 'Курс 1', days: 20, type: 'course' },
+  { id: 'break1', label: 'Перерыв 1', days: 15, type: 'break' },
+  { id: 'course2', label: 'Курс 2', days: 20, type: 'course' },
+  { id: 'break2', label: 'Перерыв 2', days: 15, type: 'break' },
+  { id: 'course3', label: 'Курс 3', days: 20, type: 'course' },
+];
+
+const TOTAL_DAYS = PHASES.reduce((s, p) => s + p.days, 0); // 104
+
+function getScheduleItems(phaseType) {
+  const base = [
+    { id:'wake', time:'10:30', title:'Пробуждение', desc:'Вода. Чистка зубов, настройка мыслей', tag:'wake', cat:'wake' },
+  ];
+
+  if (phaseType === 'course') {
+    base.push(
+      { id:'suppository_am', time:'10:30', title:'Свеча Staphylo', desc:'Ректально, сразу после пробуждения', tag:'phage', cat:'phage' },
+      { id:'phage_pyo', time:'10:30', title:'Phago Pyo — выпить', desc:'Флакон внутрь после воды', tag:'phage', cat:'phage' },
+    );
+  }
+
+  base.push(
+    { id:'breakfast', time:'11:00', title:'Завтрак', desc:'Творог 180г + черника + ½ апельсина', tag:'meal', cat:'meal' },
+    { id:'supplements', time:'11:00', title:'Добавки', desc:'D3 2000-4000МЕ + K2 MK-7 100мкг + K2 MK-4 100мкг + Омега-3', tag:'supp', cat:'supp' },
+  );
+
+  if (phaseType === 'course') {
+    base.push(
+      { id:'phage_staph', time:'12:30', title:'Phago Staph — выпить', desc:'За 30 мин до обеда-1', tag:'phage', cat:'phage' },
+    );
+  }
+
+  base.push(
+    { id:'lunch1', time:'13:00', title:'Обед-1', desc:'Суп + чеснок 1 зубок + хлеб + молоко 250мл + зелень', tag:'meal', cat:'meal' },
+    { id:'smoke1', time:'14:00', title:'Сигарета (если куришь)', desc:'Стакан воды до и после. Не затягивайся глубоко', tag:'smoke', cat:'smoke', penalty: true },
+    { id:'sport', time:'14:30', title:'Отжимания', desc:'По возможности, наращивай постепенно', tag:'sport', cat:'sport' },
+    { id:'lunch2', time:'16:00', title:'Обед-2', desc:'Курица/шашлык 200г + гречка 130г(сух) + масло олив. + огурцы + хлеб', tag:'meal', cat:'meal' },
+  );
+
+  if (phaseType === 'course') {
+    base.push(
+      { id:'phage_intesti', time:'19:30', title:'Phago Intesti — выпить', desc:'За 30 мин до ужина', tag:'phage', cat:'phage' },
+    );
+  }
+
+  base.push(
+    { id:'dinner', time:'20:00', title:'Ужин', desc:'Суп + чеснок 1 зубок + хлеб + молоко 250мл + зелень', tag:'meal', cat:'meal' },
+    { id:'smoke2', time:'22:00', title:'Сигарета (если куришь)', desc:'Стакан воды до и после', tag:'smoke', cat:'smoke', penalty: true },
+    { id:'late_meal', time:'00:00', title:'Поздний перекус', desc:'Творог 180г + черника + ½ апельсина', tag:'meal', cat:'meal' },
+  );
+
+  if (phaseType === 'course') {
+    base.push(
+      { id:'suppository_pm', time:'01:30', title:'Свеча Pyo', desc:'Ректально, перед сном', tag:'phage', cat:'phage' },
+    );
+  }
+
+  base.push(
+    { id:'sleep', time:'02:00', title:'Сон', desc:'Отход ко сну', tag:'sleep', cat:'sleep' },
+  );
+
+  return base;
+}
+
+// ============================================================
+// DATE HELPERS
+// ============================================================
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function diffDays(a, b) {
+  const da = new Date(a), db = new Date(b);
+  return Math.floor((db - da) / (1000*60*60*24));
+}
+
+function formatDateShort(dateStr) {
+  const d = new Date(dateStr);
+  const months = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  return `${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+function formatDateFull(dateStr) {
+  const d = new Date(dateStr);
+  const days = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+function getDayNumber() {
+  if (!state.startDate) return 0;
+  return diffDays(state.startDate, today()) + 1;
+}
+
+function getCurrentPhase(dayNum) {
+  let cumulative = 0;
+  for (const phase of PHASES) {
+    if (dayNum <= cumulative + phase.days) {
+      return { ...phase, dayInPhase: dayNum - cumulative, phaseStart: cumulative + 1 };
+    }
+    cumulative += phase.days;
+  }
+  return { id:'done', label:'Лечение завершено', days:0, type:'done', dayInPhase:0, phaseStart:0 };
+}
+
+function getPhaseForGlobalDay(globalDay) {
+  let cumulative = 0;
+  for (const phase of PHASES) {
+    if (globalDay <= cumulative + phase.days) {
+      return { ...phase, dayInPhase: globalDay - cumulative };
+    }
+    cumulative += phase.days;
+  }
+  return null;
+}
+
+// ============================================================
+// RENDER DASHBOARD
+// ============================================================
+function renderDashboard() {
+  const el = document.getElementById('dashboard');
+
+  if (!state.startDate || state.phase === 'setup') {
+    el.innerHTML = `
+      <div style="max-width:500px;margin:60px auto;text-align:center;">
+        <div style="font-size:48px;margin-bottom:20px;">🧬</div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:32px;font-weight:900;margin-bottom:12px;">Начни лечение</h1>
+        <p style="color:var(--text2);font-size:12px;line-height:1.7;margin-bottom:32px;">
+          Укажи дату начала первого курса фагов. 3 курса по 20 дней с перерывами 15 дней. Всего ${TOTAL_DAYS} дней.
+        </p>
+        <div style="margin-bottom:20px;">
+          <input type="date" id="start-date-input" class="setting-input" style="width:200px;font-size:14px;padding:12px 16px;">
+        </div>
+        <button class="btn-primary" onclick="startTreatment()" style="font-size:14px;padding:14px 40px;">
+          Начать навигатор
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  const vDate = viewingDate;
+  const isToday = vDate === today();
+  const globalDay = diffDays(state.startDate, vDate) + 1;
+  const phase = getCurrentPhase(globalDay);
+
+  // Overall progress based on real today
+  const realDayNum = getDayNumber();
+  const progressPct = Math.min(100, Math.max(0, ((realDayNum - 1) / TOTAL_DAYS * 100))).toFixed(1);
+
+  const scheduleItems = getScheduleItems(phase.type === 'course' ? 'course' : 'prep');
+
+  // Count checks for viewing day
+  const dayChecks = scheduleItems.filter(it => state.checks[`${vDate}:${it.id}`]).length;
+  const totalItems = scheduleItems.length;
+  const dayPct = totalItems ? Math.round(dayChecks / totalItems * 100) : 0;
+
+  const phageItems = scheduleItems.filter(i => i.cat === 'phage');
+  const phageDone = phageItems.filter(i => state.checks[`${vDate}:${i.id}`]).length;
+  const mealItems = scheduleItems.filter(i => i.cat === 'meal');
+  const mealDone = mealItems.filter(i => state.checks[`${vDate}:${i.id}`]).length;
+
+  let phaseColor = 'var(--accent)';
+  let badgeClass = 'badge-prep';
+  if (phase.type === 'course') { phaseColor = 'var(--phage)'; badgeClass = 'badge-phage'; }
+  if (phase.type === 'break') { phaseColor = 'var(--warn)'; }
+  if (phase.type === 'done') { phaseColor = 'var(--done)'; }
+
+  // Can we go prev/next?
+  const canPrev = globalDay > 1;
+  const canNext = globalDay < TOTAL_DAYS;
+  const dayOutOfRange = globalDay < 1 || globalDay > TOTAL_DAYS;
+
+  let html = '';
+
+  // Build streak tracker (last 7 days before current viewing date)
+  let streakHtml = '<div class="streak-tracker" title="Последние 7 дней">';
+  for (let i = 7; i >= 1; i--) {
+    const d = addDays(vDate, -i);
+    const gd = diffDays(state.startDate, d) + 1;
+    if (gd < 1 || gd > TOTAL_DAYS) {
+      streakHtml += '<div class="streak-dot s-empty"></div>';
+      continue;
+    }
+    if (!state.completedDays[d]) {
+      streakHtml += '<div class="streak-dot s-empty"></div>';
+      continue;
+    }
+    const pi = getPhaseForGlobalDay(gd);
+    const si = getScheduleItems(pi && pi.type === 'course' ? 'course' : 'prep');
+    const dn = si.filter(it => state.checks[`${d}:${it.id}`]).length;
+    const ratio = si.length ? dn / si.length : 0;
+    if (ratio >= 0.7) streakHtml += '<div class="streak-dot s-done"></div>';
+    else if (ratio > 0) streakHtml += '<div class="streak-dot s-partial"></div>';
+    else streakHtml += '<div class="streak-dot s-missed"></div>';
+  }
+  streakHtml += '</div>';
+
+  // Day navigator
+  html += `
+    <div class="day-nav">
+      ${streakHtml}
+      <button class="day-nav-btn ${canPrev ? '' : 'disabled'}" onclick="navDay(-1)">‹</button>
+      <div class="day-nav-center">
+        <div class="day-nav-date">${formatDateFull(vDate)}</div>
+        <div class="day-nav-sub">${dayOutOfRange ? 'Вне лечения' : `День ${globalDay} из ${TOTAL_DAYS} · ${phase.label}`}</div>
+        <button class="day-nav-today ${isToday ? 'hidden' : ''}" onclick="goToToday()">← Сегодня</button>
+      </div>
+      <button class="day-nav-btn ${canNext ? '' : 'disabled'}" onclick="navDay(1)">›</button>
+    </div>
+  `;
+
+  const isCompleted = state.completedDays[vDate];
+
+  if (dayOutOfRange) {
+    html += `<div style="text-align:center;padding:40px;color:var(--text3);">Этот день вне периода лечения</div>`;
+    el.innerHTML = html;
+    return;
+  }
+
+  html += `
+    <div class="dash-top">
+      <div class="dash-card phase">
+        <div class="dash-label">Фаза дня</div>
+        <div class="dash-value" style="color:${phaseColor}">${phase.label}</div>
+        <div class="dash-detail">${phase.type !== 'done' ? `День ${phase.dayInPhase} из ${phase.days}` : 'Поздравляю!'}</div>
+      </div>
+      <div class="dash-card progress">
+        <div class="dash-label">Общий прогресс</div>
+        <div class="dash-value">${progressPct}%</div>
+        <div class="dash-detail">Сегодня день ${Math.min(realDayNum, TOTAL_DAYS)} из ${TOTAL_DAYS}</div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:${progressPct}%"></div></div>
+      </div>
+    </div>
+
+    <div class="today-stats">
+      <div class="stat-mini">
+        <div class="stat-mini-val" style="color:var(--done)">${dayPct}%</div>
+        <div class="stat-mini-label">Выполнено</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-val" style="color:var(--phage)">${phageDone}/${phageItems.length}</div>
+        <div class="stat-mini-label">Фаги</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-val" style="color:var(--accent)">${mealDone}/${mealItems.length}</div>
+        <div class="stat-mini-label">Приёмы еды</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-val">${dayChecks}/${totalItems}</div>
+        <div class="stat-mini-label">Пунктов</div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      Расписание дня
+      <span class="badge ${badgeClass}">${phase.type === 'course' ? 'С фагами' : phase.type === 'break' ? 'Перерыв — без фагов' : 'Готово'}</span>
+    </div>
+
+    <div class="timeline">
+  `;
+
+  const emojiMap = {
+    phage: '🧬', meal: '🍽️', supp: '💊', smoke: '🗑️', sport: '💪', wake: '☀️', sleep: '💤'
+  };
+
+  scheduleItems.forEach(item => {
+    const key = `${vDate}:${item.id}`;
+    const checked = state.checks[key];
+    
+    html += `
+      <div class="tl-item ${checked ? 'checked' : ''}" onclick="toggleCheck('${key}')">
+        <div class="tl-dot dot-${item.cat}"></div>
+        <div class="tl-check">${checked ? '✓' : ''}</div>
+        <div class="tl-time">${item.time}</div>
+        <div class="tl-content">
+          <div class="tl-title">${item.title}</div>
+          <div class="tl-desc">${item.desc}</div>
+          ${item.penalty ? '<div class="tl-penalty">−5-10% к успеху лечения</div>' : ''}
+        </div>
+        <div class="tl-tag">${emojiMap[item.cat] || ''}</div>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+
+  html += `
+    <div style="margin-top:20px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:11px;color:var(--text2);line-height:1.7;">
+      <strong style="color:var(--warn);">💡 Замена для обеда-1 и ужина:</strong> Карбонара + хлеб + молоко 250мл + огурцы 1-2 шт<br>
+      <strong style="color:var(--text3);">Сигареты необязательны</strong> — пропускай если можешь. 0 сигарет = максимум эффективности фагов.
+    </div>
+  `;
+
+  // Complete day button
+  if (!isCompleted) {
+    html += `<button class="btn-complete-day" onclick="completeDay('${vDate}')">☑ Завершить день</button>`;
+  } else {
+    html += `<div class="day-completed-banner">✅ День завершён <button class="btn-uncomplete-day" onclick="unCompleteDay('${vDate}')">отменить</button></div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// ============================================================
+// RENDER CALENDAR
+// ============================================================
+function renderCalendar() {
+  const el = document.getElementById('calendar');
+
+  if (!state.startDate) {
+    el.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text3);">Сначала настрой дату начала на главной</div>';
+    return;
+  }
+
+  const dayNum = getDayNumber();
+  let html = `<div class="section-title">Календарь лечения</div><div class="cal-phases">`;
+
+  let cumDays = 0;
+  PHASES.forEach(phase => {
+    // Count completed days in this phase
+    let completedInPhase = 0;
+    for (let d = 1; d <= phase.days; d++) {
+      const dateStr = addDays(state.startDate, cumDays + d - 1);
+      if (state.completedDays[dateStr]) completedInPhase++;
+    }
+    
+    let dotClass = 'dot-future';
+    if (completedInPhase === phase.days) dotClass = 'dot-done-phase';
+    else if (completedInPhase > 0) {
+      dotClass = phase.type === 'course' ? 'dot-active' : phase.type === 'break' ? 'dot-break' : 'dot-prep';
+    }
+
+    html += `
+      <div class="cal-phase">
+        <div class="cal-phase-title"><span class="dot ${dotClass}"></span>${phase.label} — ${phase.days} дней (${formatDateShort(addDays(state.startDate, cumDays))} – ${formatDateShort(addDays(state.startDate, cumDays + phase.days - 1))})</div>
+        <div class="cal-days">
+    `;
+
+    for (let d = 1; d <= phase.days; d++) {
+      const globalDay = cumDays + d;
+      const dateStr = addDays(state.startDate, globalDay - 1);
+      const phaseInfo = getPhaseForGlobalDay(globalDay);
+      const items = getScheduleItems(phaseInfo && phaseInfo.type === 'course' ? 'course' : 'prep');
+      const totalItems = items.length;
+      const doneItems = items.filter(it => state.checks[`${dateStr}:${it.id}`]).length;
+
+      let dayClass = 'future';
+      if (state.completedDays[dateStr]) {
+        if (doneItems === 0) dayClass = 'missed';
+        else if (doneItems < totalItems * 0.7) dayClass = 'partial';
+        else dayClass = 'done';
+      }
+      if (dateStr === viewingDate) dayClass = 'today';
+
+      html += `<div class="cal-day ${dayClass}" title="День ${globalDay}: ${formatDateFull(dateStr)} — ${doneItems}/${totalItems} выполнено" onclick="goToDay('${dateStr}')">${d}</div>`;
+    }
+
+    html += `</div></div>`;
+    cumDays += phase.days;
+  });
+
+  html += `</div>
+    <div style="margin-top:16px;display:flex;gap:16px;flex-wrap:wrap;font-size:10px;color:var(--text3);">
+      <span><span class="cal-day done" style="display:inline-flex;width:16px;height:16px;font-size:0;vertical-align:middle;"></span> Выполнено</span>
+      <span><span class="cal-day partial" style="display:inline-flex;width:16px;height:16px;font-size:0;vertical-align:middle;"></span> Частично</span>
+      <span><span class="cal-day missed" style="display:inline-flex;width:16px;height:16px;font-size:0;vertical-align:middle;"></span> Пропущено</span>
+      <span><span class="cal-day today" style="display:inline-flex;width:16px;height:16px;font-size:0;vertical-align:middle;"></span> Текущий</span>
+    </div>
+  `;
+
+  el.innerHTML = html;
+}
+
+// ============================================================
+// RENDER INFO
+// ============================================================
+function renderInfo() {
+  const el = document.getElementById('info');
+  el.innerHTML = `
+    <div class="section-title">Справка по лечению</div>
+
+    <div class="info-card">
+      <h3>🧬 Расписание с фагами (курсы)</h3>
+      <table class="info-table">
+        <tr><td>10:30</td><td>Вода → Свеча Staphylo → Phago Pyo выпить → зубы, настройка</td></tr>
+        <tr><td>11:00</td><td>Завтрак: творог 180г + черника + ½ апельсина + добавки</td></tr>
+        <tr><td>12:30</td><td>Phago Staph — выпить (за 30 мин до обеда)</td></tr>
+        <tr><td>13:00</td><td>Обед-1: суп + чеснок 1 зубок + хлеб + молоко 250мл + зелень</td></tr>
+        <tr><td>14:00-14:30</td><td>🚬 Сигарета (опционально) + вода до/после</td></tr>
+        <tr><td>14:30-15:30</td><td>Отжимания (по возможности)</td></tr>
+        <tr><td>16:00</td><td>Обед-2: курица/шашлык 200г + гречка 130г(сух) + масло олив. + огурцы + хлеб</td></tr>
+        <tr><td>19:30</td><td>Phago Intesti — выпить (за 30 мин до ужина)</td></tr>
+        <tr><td>20:00</td><td>Ужин: суп + чеснок 1 зубок + хлеб + молоко 250мл + зелень</td></tr>
+        <tr><td>22:00-22:30</td><td>🚬 Сигарета (опционально) + вода до/после</td></tr>
+        <tr><td>00:00</td><td>Поздний: творог 180г + черника + ½ апельсина</td></tr>
+        <tr><td>01:30-02:00</td><td>Свеча Pyo ректально → сон</td></tr>
+      </table>
+    </div>
+
+    <div class="info-card">
+      <h3>💊 Добавки (с завтраком)</h3>
+      <table class="info-table">
+        <tr><td>Витамин D3</td><td>2000-4000 МЕ</td></tr>
+        <tr><td>Витамин K2 MK-7</td><td>100 мкг</td></tr>
+        <tr><td>Витамин K2 MK-4</td><td>100 мкг</td></tr>
+        <tr><td>Омега-3 (EPA+DHA)</td><td>1000-2000 мг</td></tr>
+      </table>
+    </div>
+
+    <div class="info-card">
+      <h3>📊 Нутриенты в день</h3>
+      <table class="info-table">
+        <tr><td>Калории</td><td>~2500-2650 <span class="nutrient-status status-ok">✓</span></td></tr>
+        <tr><td>Белок</td><td>~147-155г (2.0 г/кг) <span class="nutrient-status status-ok">✓</span></td></tr>
+        <tr><td>Кальций</td><td>~1100мг <span class="nutrient-status status-ok">✓</span></td></tr>
+        <tr><td>Железо</td><td>~17мг <span class="nutrient-status status-ok">✓</span></td></tr>
+        <tr><td>Цинк</td><td>~13мг <span class="nutrient-status status-ok">✓</span></td></tr>
+        <tr><td>Магний</td><td>~480мг <span class="nutrient-status status-ok">✓</span></td></tr>
+        <tr><td>Витамин С</td><td>~90мг <span class="nutrient-status status-ok">✓</span></td></tr>
+        <tr><td>Фолат</td><td>~280мкг <span class="nutrient-status status-warn">70%</span> добавь зелени</td></tr>
+      </table>
+    </div>
+
+    <div class="info-card">
+      <h3>⚠️ Важные правила</h3>
+      <table class="info-table">
+        <tr><td>Фаги</td><td>За 30 минут до еды, чтобы прошли желудок</td></tr>
+        <tr><td>Хранение</td><td>Фаги в холодильнике +2-8°C</td></tr>
+        <tr><td>Свечи</td><td>Еда не влияет на их действие</td></tr>
+        <tr><td>Замена обеда/ужина</td><td>Карбонара + хлеб + молоко 250мл + огурцы 1-2 шт</td></tr>
+        <tr><td>Сосиски</td><td>Макс. 3 из 7 дней вместо курицы</td></tr>
+        <tr><td>Курение</td><td>0 = лучше всего. Макс 2/день: в 14:00 и 22:00. Вода до и после</td></tr>
+        <tr><td>Чеснок</td><td>2 зубка/день — антибактериальный эффект</td></tr>
+      </table>
+    </div>
+
+    <div class="info-card">
+      <h3>📅 Курс лечения</h3>
+      <table class="info-table">
+        <tr><td>Курс 1</td><td>20 дней — фаги + свечи</td></tr>
+        <tr><td>Перерыв 1</td><td>15 дней</td></tr>
+        <tr><td>Курс 2</td><td>20 дней — фаги + свечи</td></tr>
+        <tr><td>Перерыв 2</td><td>15 дней</td></tr>
+        <tr><td>Курс 3</td><td>20 дней — фаги + свечи</td></tr>
+        <tr><td><strong>Итого</strong></td><td><strong>${TOTAL_DAYS} дней (~3 мес)</strong></td></tr>
+      </table>
+    </div>
+  `;
+}
+
+// ============================================================
+// RENDER SETTINGS
+// ============================================================
+function renderSettings() {
+  const el = document.getElementById('settings');
+  el.innerHTML = `
+    <div class="section-title">Настройки</div>
+
+    <div class="setting-group">
+      <h3>Дата начала лечения</h3>
+      <div class="setting-row">
+        <div class="setting-label">Начало курса 1</div>
+        <input type="date" id="settings-start" class="setting-input" value="${state.startDate || ''}" style="width:160px;">
+      </div>
+      <div style="margin-top:14px;">
+        <button class="btn-primary" onclick="updateStartDate()">Сохранить</button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <h3>💾 Данные</h3>
+      <p style="font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.6;">
+        ${isTelegram 
+          ? '✅ Telegram Cloud — данные синхронизируются между устройствами автоматически. Бэкап на всякий случай:' 
+          : 'Данные в браузере. Не пропадут при перезагрузке. Бэкап для страховки:'}
+      </p>
+      <div class="backup-row">
+        <button class="btn-backup" onclick="exportData()">📤 Экспорт</button>
+        <button class="btn-backup" onclick="document.getElementById('import-file').click()">📥 Импорт</button>
+        <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(event)">
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <h3>Данные</h3>
+      <div class="setting-row">
+        <div class="setting-label">Сбросить все галочки</div>
+        <button class="btn-danger" onclick="resetChecks()">Сбросить</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Полный сброс приложения</div>
+        <button class="btn-danger" onclick="fullReset()">Сбросить всё</button>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+function toggleCheck(key) {
+  if (state.checks[key]) {
+    delete state.checks[key];
+  } else {
+    state.checks[key] = true;
+  }
+  saveState();
+  renderDashboard();
+}
+
+function startTreatment() {
+  const input = document.getElementById('start-date-input');
+  if (!input.value) { alert('Выбери дату начала'); return; }
+  state.startDate = input.value;
+  state.phase = 'running';
+  saveState();
+  renderAll();
+}
+
+function completeDay(dateStr) {
+  state.completedDays[dateStr] = true;
+  saveState();
+  renderDashboard();
+  renderCalendar();
+}
+
+function unCompleteDay(dateStr) {
+  delete state.completedDays[dateStr];
+  saveState();
+  renderDashboard();
+  renderCalendar();
+}
+
+function updateStartDate() {
+  const input = document.getElementById('settings-start');
+  if (input.value) {
+    state.startDate = input.value;
+    state.phase = 'running';
+    saveState();
+    renderAll();
+    showView('dashboard');
+  }
+}
+
+function resetChecks() {
+  if (confirm('Сбросить все галочки? Это действие нельзя отменить.')) {
+    state.checks = {};
+    state.completedDays = {};
+    saveState();
+    renderAll();
+  }
+}
+
+function fullReset() {
+  if (confirm('Полный сброс? Все данные будут удалены.')) {
+    localStorage.removeItem(STORAGE_KEY);
+    if (isTelegram && tg.CloudStorage) {
+      tg.CloudStorage.getKeys((err, keys) => {
+        if (!err && keys) keys.forEach(k => { if (k.startsWith(CLOUD_KEY)) tg.CloudStorage.removeItem(k, ()=>{}); });
+      });
+    }
+    state = { ...DEFAULT_STATE };
+    viewingDate = today();
+    renderAll();
+  }
+}
+
+function goToDay(dateStr) {
+  viewingDate = dateStr;
+  showView('dashboard');
+}
+
+function navDay(offset) {
+  const globalDay = diffDays(state.startDate, viewingDate) + 1 + offset;
+  if (globalDay < 1 || globalDay > TOTAL_DAYS) return;
+  viewingDate = addDays(state.startDate, globalDay - 1);
+  renderDashboard();
+}
+
+function goToToday() {
+  viewingDate = today();
+  renderDashboard();
+}
+
+// Swipe support for mobile
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].screenX - touchStartX;
+  if (!document.getElementById('dashboard').classList.contains('active')) return;
+  if (!state.startDate) return;
+  if (Math.abs(dx) < 60) return;
+  if (dx > 0) navDay(-1);
+  else navDay(1);
+}, { passive: true });
+
+// Keyboard support
+document.addEventListener('keydown', e => {
+  const dashActive = document.getElementById('dashboard').classList.contains('active');
+  if (!dashActive || !state.startDate) return;
+  if (e.key === 'ArrowLeft') navDay(-1);
+  else if (e.key === 'ArrowRight') navDay(1);
+  else if (e.key === 'Home' || e.key === 't') goToToday();
+});
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    if (b.dataset.view === id) b.classList.add('active');
+  });
+  window.scrollTo(0, 0);
+
+  if (id === 'dashboard') renderDashboard();
+  else if (id === 'calendar') renderCalendar();
+  else if (id === 'info') renderInfo();
+  else if (id === 'settings') renderSettings();
+}
+
+function renderAll() {
+  renderDashboard();
+  renderCalendar();
+  renderInfo();
+  renderSettings();
+}
+
+// ============================================================
+// BACKUP: EXPORT / IMPORT
+// ============================================================
+function exportData() {
+  const dataStr = JSON.stringify(state, null, 2);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `phage-backup-${today()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!imported.startDate) { alert('Неверный файл бэкапа'); return; }
+      if (!confirm('Загрузить бэкап? Текущие данные будут заменены.')) return;
+      state = { ...DEFAULT_STATE, ...imported };
+      saveState();
+      viewingDate = today();
+      renderAll();
+      alert('Бэкап загружен!');
+    } catch(err) {
+      alert('Ошибка чтения файла');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ============================================================
+// INIT
+// ============================================================
+initApp();
+</script>
+</body>
+</html>
